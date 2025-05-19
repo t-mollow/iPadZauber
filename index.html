@@ -3,89 +3,88 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>iPad Bewegungs­sensor-Test</title>
+  <title>Münze rollen mit Sensor-Berechtigung</title>
   <style>
     body {
-      font-family: sans-serif;
-      background-color: #f0f0f0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
       margin: 0;
-    }
-    h1 {
-      margin-bottom: 20px;
-    }
-    .data {
+      overflow: hidden;
       background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      font-size: 1.2em;
-      text-align: left;
-      min-width: 200px;
+      position: relative;
+      font-family: sans-serif;
     }
-    button {
-      margin-top: 30px;
-      padding: 10px 20px;
+    #start {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
       font-size: 1em;
-      border: none;
-      border-radius: 5px;
       background-color: #007AFF;
       color: white;
+      border: none;
+      border-radius: 6px;
       cursor: pointer;
+      z-index: 10;
+    }
+    #coin {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/1/1e/Euro_coin_1_obverse_common_2007.png') no-repeat center/contain;
+      top: calc(50% - 40px);
+      left: calc(50% - 40px);
+      transition: opacity 0.5s;
     }
   </style>
 </head>
 <body>
-  <h1>iPad Bewegungs­sensor-Test</h1>
-  <div class="data">
-    <div>X (gamma): <span id="x">–</span></div>
-    <div>Y (beta): <span id="y">–</span></div>
-    <div>Z (alpha): <span id="z">–</span></div>
-  </div>
   <button id="start">Sensoren aktivieren</button>
+  <div id="coin"></div>
 
   <script>
     const btn = document.getElementById('start');
-    const elX = document.getElementById('x');
-    const elY = document.getElementById('y');
-    const elZ = document.getElementById('z');
+    const coin = document.getElementById('coin');
+    let x = window.innerWidth/2 - 40;
+    let y = window.innerHeight/2 - 40;
 
     btn.addEventListener('click', () => {
-      // iOS 13+ Permission API
       if (typeof DeviceOrientationEvent !== 'undefined' &&
           typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
           .then(permission => {
             if (permission === 'granted') {
-              initSensor();
+              initMotion();
               btn.style.display = 'none';
             } else {
-              alert('Sensor-Zugriff abgelehnt.');
+              alert('Sensor-Berechtigung verweigert.');
             }
           })
-          .catch(err => {
-            console.error(err);
-            alert('Fehler bei der Berechtigungs­anfrage.');
-          });
+          .catch(err => console.error(err));
       } else {
-        // ältere iOS-/andere Browser
-        initSensor();
+        initMotion();
         btn.style.display = 'none';
       }
     });
 
-    function initSensor() {
-      window.addEventListener('deviceorientation', ev => {
-        elX.textContent = ev.gamma ? ev.gamma.toFixed(1) : '–';
-        elY.textContent = ev.beta  ? ev.beta.toFixed(1)  : '–';
-        elZ.textContent = ev.alpha ? ev.alpha.toFixed(1) : '–';
+    function initMotion() {
+      window.addEventListener('deviceorientation', event => {
+        const gamma = event.gamma || 0; // links/rechts
+        const beta  = event.beta  || 0; // vor/zurück
+
+        x += gamma * 1.5;
+        y += beta  * 1.5 - 45;
+
+        x = Math.max(0, Math.min(window.innerWidth - 80, x));
+        y = Math.max(0, Math.min(window.innerHeight - 80, y));
+
+        coin.style.left = x + 'px';
+        coin.style.top  = y + 'px';
+
+        if (y > window.innerHeight - 85) {
+          coin.style.opacity = 0;
+        }
       }, true);
     }
   </script>
 </body>
 </html>
-
