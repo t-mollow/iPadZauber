@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sensor-Test Permission</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .data {
+      font-size: 1.5em;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>iPad Bewegungssensor-Test</h1>
+  <div class="data">
+    <div>X (gamma): <span id="x">0</span></div>
+    <div>Y (beta): <span id="y">0</span></div>
+    <div>Z (alpha): <span id="z">0</span></div>
+  </div>
+
+  <script>
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener('deviceorientation', function(event) {
+        document.getElementById("x").textContent = event.gamma.toFixed(2);
+        document.getElementById("y").textContent = event.beta.toFixed(2);
+        document.getElementById("z").textContent = event.alpha.toFixed(2);
+      }, true);
+    } else {
+      document.querySelector('.data').textContent = "DeviceOrientation wird nicht unterstützt.";
+    }
+  </script>
+</body>
+</html>
