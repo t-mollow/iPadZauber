@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Münze rollen mit absoluten Sensorwerten & Sound</title>
+  <title>Münze rollen mit Neigungs-basiertem Tempo & Sound</title>
   <style>
     body { margin: 0; overflow: hidden; background: white; font-family: sans-serif; }
     #controls { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 20; }
@@ -38,23 +38,28 @@
   <audio id="coinSound" src="https://actions.google.com/sounds/v1/coins/coin_drop.mp3" preload="auto"></audio>
 
   <script>
+    // Konstanten
+    const coinSize = 80;
+    const maxAngle = 45;       // maximaler Neigungswinkel
+    const maxAcceleration = 0.5; // Beschleunigungseinheit
+    const friction = 0.98;     // Reibungsfaktor
+
+    let x, y, vx, vy, hasFallen = false;
     const btnStart = document.getElementById('start');
     const btnToggle = document.getElementById('toggle-frame');
     const btnReset = document.getElementById('reset');
     const frame = document.getElementById('frame');
     const coin = document.getElementById('coin');
     const coinSound = document.getElementById('coinSound');
-    const coinSize = 80;
-    const maxGamma = 45;  // maximaler Winkel nach links/rechts
-    const maxBeta  = 45;  // maximaler Winkel nach vor/zurück
-    let hasFallen = false;
 
     function initCoin() {
       hasFallen = false;
+      vx = 0; vy = 0;
+      x = (window.innerWidth - coinSize) / 2;
+      y = (window.innerHeight - coinSize) / 2;
+      coin.style.left = x + 'px';
+      coin.style.top  = y + 'px';
       coin.style.opacity = 1;
-      // zentriert initial position, wird überschrieben
-      coin.style.left = (window.innerWidth - coinSize)/2 + 'px';
-      coin.style.top  = (window.innerHeight - coinSize)/2 + 'px';
     }
 
     function startTracking() {
@@ -62,15 +67,27 @@
       window.addEventListener('deviceorientation', event => {
         let gamma = event.gamma || 0;
         let beta  = event.beta  || 0;
-        // Werte begrenzen
-        gamma = Math.max(-maxGamma, Math.min(maxGamma, gamma));
-        beta  = Math.max(-maxBeta,  Math.min(maxBeta,  beta ));
-        // Position berechnen
-        const x = ((gamma + maxGamma)/(2 * maxGamma)) * (window.innerWidth - coinSize);
-        const y = ((beta  + maxBeta )/(2 * maxBeta )) * (window.innerHeight - coinSize);
+        // auf Bereich begrenzen
+        gamma = Math.max(-maxAngle, Math.min(maxAngle, gamma));
+        beta  = Math.max(-maxAngle, Math.min(maxAngle, beta));
+        // Normalisierung auf -1..1
+        const ax = (gamma / maxAngle) * maxAcceleration;
+        const ay = (beta  / maxAngle) * maxAcceleration;
+        // Geschwindigkeiten aktualisieren
+        vx += ax;
+        vy += ay;
+        // Reibung
+        vx *= friction;
+        vy *= friction;
+        // Position aktualisieren
+        x += vx;
+        y += vy;
+        // Begrenzen
+        x = Math.max(0, Math.min(window.innerWidth  - coinSize, x));
+        y = Math.max(0, Math.min(window.innerHeight - coinSize, y));
         coin.style.left = x + 'px';
         coin.style.top  = y + 'px';
-        // Abfallen prüfen
+        // Abfallen abfragen
         if (!hasFallen && y >= window.innerHeight - coinSize) {
           hasFallen = true;
           coin.style.opacity = 0;
@@ -89,8 +106,11 @@
               btnToggle.style.display = 'inline-block';
               btnReset.style.display = 'inline-block';
               startTracking();
-            } else alert('Sensor-Berechtigung verweigert.');
-          }).catch(console.error);
+            } else {
+              alert('Sensor-Berechtigung verweigert.');
+            }
+          })
+          .catch(console.error);
       } else {
         btnStart.style.display = 'none';
         btnToggle.style.display = 'inline-block';
@@ -107,4 +127,3 @@
   </script>
 </body>
 </html>
-
