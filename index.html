@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Münze rollen mit Sensor-Berechtigung</title>
+  <title>Münze rollen (Debug-Version)</title>
   <style>
     body {
       margin: 0;
@@ -30,7 +30,9 @@
       position: absolute;
       width: 80px;
       height: 80px;
-      background: url('https://upload.wikimedia.org/wikipedia/commons/1/1e/Euro_coin_1_obverse_common_2007.png') no-repeat center/contain;
+      background-color: gold;
+      border: 2px solid #b8860b;
+      border-radius: 50%;
       opacity: 0;
       transition: opacity 0.5s;
     }
@@ -47,7 +49,7 @@
 
     btn.addEventListener('click', () => {
       const startTracking = () => {
-        // Anfangsposition zentriert setzen
+        // Anfangsposition in die Bildschirmmitte
         x = window.innerWidth / 2 - 40;
         y = window.innerHeight / 2 - 40;
         coin.style.left = x + 'px';
@@ -67,7 +69,6 @@
           coin.style.left = x + 'px';
           coin.style.top  = y + 'px';
 
-          // Verschwinden lassen, wenn rausgefallen
           if (y > window.innerHeight - 80) {
             coin.style.opacity = 0;
           }
