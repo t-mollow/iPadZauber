@@ -3,127 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Münze rollen mit Neigungs-basiertem Tempo & Sound</title>
+  <title>Münze per Touch ziehen & verschwinden</title>
   <style>
-    body { margin: 0; overflow: hidden; background: white; font-family: sans-serif; }
-    #controls { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 20; }
-    #controls button { margin: 0 5px; padding: 6px 12px; font-size: 0.9em; }
-    #coin { position: absolute; width: 80px; height: 80px; background-color: gold; border: 2px solid #b8860b; border-radius: 50%; opacity: 0; transition: opacity 0.3s; z-index: 10; }
-    #frame { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 5; }
-    .border-vertical { position: absolute; width: 4px; background: rgba(0,0,0,0.5); top: 0; bottom: 0; }
-    #border-left { left: 0; }
-    #border-right { right: 0; }
-    .border-horizontal { position: absolute; height: 4px; background: rgba(0,0,0,0.5); left: 0; right: 0; }
-    #border-top-left { top: 0; left: 0; right: calc(50% + 40px); }
-    #border-top-right { top: 0; left: calc(50% + 40px); right: 0; }
-    #border-bottom-left { bottom: 0; left: 0; right: calc(50% + 40px); }
-    #border-bottom-right { bottom: 0; left: calc(50% + 40px); right: 0; }
+    body { margin: 0; overflow: hidden; background: #f8f8f8; font-family: sans-serif; position: relative; }
+    #coin { position: absolute; width: 80px; height: 80px; background-color: gold; border: 2px solid #b8860b; border-radius: 50%; left: 10px; top: 10px; touch-action: none; }
+    #reset { position: absolute; top: 10px; right: 10px; padding: 8px 16px; font-size: 1em; background: #007AFF; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    #message { position: absolute; bottom: 20px; width: 100%; text-align: center; font-size: 1.2em; color: #333; }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <button id="start">Sensoren aktivieren</button>
-    <button id="toggle-frame" style="display:none;">Rahmen an/aus</button>
-    <button id="reset" style="display:none;">Zurücksetzen</button>
-  </div>
-  <div id="frame" style="display:none;">
-    <div id="border-left" class="border-vertical"></div>
-    <div id="border-right" class="border-vertical"></div>
-    <div id="border-top-left" class="border-horizontal"></div>
-    <div id="border-top-right" class="border-horizontal"></div>
-    <div id="border-bottom-left" class="border-horizontal"></div>
-    <div id="border-bottom-right" class="border-horizontal"></div>
-  </div>
   <div id="coin"></div>
+  <button id="reset">Reset</button>
+  <div id="message">Zieh die Münze aus der Ecke und lass sie unten verschwinden.</div>
   <audio id="coinSound" src="https://actions.google.com/sounds/v1/coins/coin_drop.mp3" preload="auto"></audio>
 
   <script>
-    // Konstanten
-    const coinSize = 80;
-    const maxAngle = 45;       // maximaler Neigungswinkel
-    const maxAcceleration = 0.5; // Beschleunigungseinheit
-    const friction = 0.98;     // Reibungsfaktor
-
-    let x, y, vx, vy, hasFallen = false;
-    const btnStart = document.getElementById('start');
-    const btnToggle = document.getElementById('toggle-frame');
-    const btnReset = document.getElementById('reset');
-    const frame = document.getElementById('frame');
     const coin = document.getElementById('coin');
-    const coinSound = document.getElementById('coinSound');
+    const reset = document.getElementById('reset');
+    const sound = document.getElementById('coinSound');
+    let offsetX = 0, offsetY = 0;
+    let dragging = false;
+    const coinSize = 80;
 
-    function initCoin() {
-      hasFallen = false;
-      vx = 0; vy = 0;
-      x = (window.innerWidth - coinSize) / 2;
-      y = (window.innerHeight - coinSize) / 2;
+    function onTouchStart(e) {
+      const touch = e.touches[0];
+      const rect = coin.getBoundingClientRect();
+      if (touch.clientX >= rect.left && touch.clientX <= rect.right && touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+        dragging = true;
+        offsetX = touch.clientX - rect.left;
+        offsetY = touch.clientY - rect.top;
+      }
+    }
+
+    function onTouchMove(e) {
+      if (!dragging) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      let x = touch.clientX - offsetX;
+      let y = touch.clientY - offsetY;
+      x = Math.max(0, Math.min(window.innerWidth - coinSize, x));
+      y = Math.max(0, Math.min(window.innerHeight - coinSize, y));
       coin.style.left = x + 'px';
       coin.style.top  = y + 'px';
-      coin.style.opacity = 1;
     }
 
-    function startTracking() {
-      initCoin();
-      window.addEventListener('deviceorientation', event => {
-        let gamma = event.gamma || 0;
-        let beta  = event.beta  || 0;
-        // auf Bereich begrenzen
-        gamma = Math.max(-maxAngle, Math.min(maxAngle, gamma));
-        beta  = Math.max(-maxAngle, Math.min(maxAngle, beta));
-        // Normalisierung auf -1..1
-        const ax = (gamma / maxAngle) * maxAcceleration;
-        const ay = (beta  / maxAngle) * maxAcceleration;
-        // Geschwindigkeiten aktualisieren
-        vx += ax;
-        vy += ay;
-        // Reibung
-        vx *= friction;
-        vy *= friction;
-        // Position aktualisieren
-        x += vx;
-        y += vy;
-        // Begrenzen
-        x = Math.max(0, Math.min(window.innerWidth  - coinSize, x));
-        y = Math.max(0, Math.min(window.innerHeight - coinSize, y));
-        coin.style.left = x + 'px';
-        coin.style.top  = y + 'px';
-        // Abfallen abfragen
-        if (!hasFallen && y >= window.innerHeight - coinSize) {
-          hasFallen = true;
-          coin.style.opacity = 0;
-          coinSound.currentTime = 0;
-          coinSound.play();
-        }
-      }, true);
-    }
-
-    btnStart.addEventListener('click', () => {
-      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission()
-          .then(permission => {
-            if (permission === 'granted') {
-              btnStart.style.display = 'none';
-              btnToggle.style.display = 'inline-block';
-              btnReset.style.display = 'inline-block';
-              startTracking();
-            } else {
-              alert('Sensor-Berechtigung verweigert.');
-            }
-          })
-          .catch(console.error);
-      } else {
-        btnStart.style.display = 'none';
-        btnToggle.style.display = 'inline-block';
-        btnReset.style.display = 'inline-block';
-        startTracking();
+    function onTouchEnd(e) {
+      if (!dragging) return;
+      dragging = false;
+      const rect = coin.getBoundingClientRect();
+      if (rect.top + coinSize > window.innerHeight - 20) {
+        coin.style.transition = 'opacity 0.4s';
+        coin.style.opacity = '0';
+        sound.currentTime = 0;
+        sound.play();
+        document.getElementById('message').textContent = 'Geschafft!';
       }
-    });
+    }
 
-    btnToggle.addEventListener('click', () => {
-      frame.style.display = frame.style.display === 'block' ? 'none' : 'block';
-    });
+    function onReset() {
+      coin.style.transition = '';
+      coin.style.opacity = '1';
+      coin.style.left = '10px';
+      coin.style.top = '10px';
+      document.getElementById('message').textContent = 'Zieh die Münze aus der Ecke und lass sie unten verschwinden.';
+    }
 
-    btnReset.addEventListener('click', initCoin);
+    coin.addEventListener('touchstart', onTouchStart);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    coin.addEventListener('touchend', onTouchEnd);
+    reset.addEventListener('click', onReset);
   </script>
 </body>
 </html>
