@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sensor-Test Permission</title>
+  <title>iPad Bewegungs­sensor-Test</title>
   <style>
     body {
       font-family: sans-serif;
       background-color: #f0f0f0;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
       height: 100vh;
       margin: 0;
     }
@@ -19,32 +19,73 @@
       margin-bottom: 20px;
     }
     .data {
-      font-size: 1.5em;
       background: white;
       padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-size: 1.2em;
+      text-align: left;
+      min-width: 200px;
+    }
+    button {
+      margin-top: 30px;
+      padding: 10px 20px;
+      font-size: 1em;
+      border: none;
+      border-radius: 5px;
+      background-color: #007AFF;
+      color: white;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>iPad Bewegungssensor-Test</h1>
+  <h1>iPad Bewegungs­sensor-Test</h1>
   <div class="data">
-    <div>X (gamma): <span id="x">0</span></div>
-    <div>Y (beta): <span id="y">0</span></div>
-    <div>Z (alpha): <span id="z">0</span></div>
+    <div>X (gamma): <span id="x">–</span></div>
+    <div>Y (beta): <span id="y">–</span></div>
+    <div>Z (alpha): <span id="z">–</span></div>
   </div>
+  <button id="start">Sensoren aktivieren</button>
 
   <script>
-    if (window.DeviceOrientationEvent) {
-      window.addEventListener('deviceorientation', function(event) {
-        document.getElementById("x").textContent = event.gamma.toFixed(2);
-        document.getElementById("y").textContent = event.beta.toFixed(2);
-        document.getElementById("z").textContent = event.alpha.toFixed(2);
+    const btn = document.getElementById('start');
+    const elX = document.getElementById('x');
+    const elY = document.getElementById('y');
+    const elZ = document.getElementById('z');
+
+    btn.addEventListener('click', () => {
+      // iOS 13+ Permission API
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(permission => {
+            if (permission === 'granted') {
+              initSensor();
+              btn.style.display = 'none';
+            } else {
+              alert('Sensor-Zugriff abgelehnt.');
+            }
+          })
+          .catch(err => {
+            console.error(err);
+            alert('Fehler bei der Berechtigungs­anfrage.');
+          });
+      } else {
+        // ältere iOS-/andere Browser
+        initSensor();
+        btn.style.display = 'none';
+      }
+    });
+
+    function initSensor() {
+      window.addEventListener('deviceorientation', ev => {
+        elX.textContent = ev.gamma ? ev.gamma.toFixed(1) : '–';
+        elY.textContent = ev.beta  ? ev.beta.toFixed(1)  : '–';
+        elZ.textContent = ev.alpha ? ev.alpha.toFixed(1) : '–';
       }, true);
-    } else {
-      document.querySelector('.data').textContent = "DeviceOrientation wird nicht unterstützt.";
     }
   </script>
 </body>
 </html>
+
