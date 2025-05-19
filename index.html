@@ -3,110 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Münze rollen mit Sensor-Berechtigung1</title>
+  <title>Münze rollen mit Rahmen & Sound</title>
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: white;
-      position: relative;
-      font-family: sans-serif;
-    }
-    #start {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 12px 24px;
-      font-size: 1em;
-      background-color: #007AFF;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      z-index: 10;
-    }
-    #coin {
-      position: absolute;
-      width: 80px;
-      height: 80px;
-      background-color: gold;
-      border: 2px solid #b8860b;
-      border-radius: 50%;
-      opacity: 0;
-      transition: opacity 0.5s;
-    }
+    body { margin: 0; overflow: hidden; background: white; font-family: sans-serif; }
+    #controls { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 20; }
+    #controls button { margin: 0 5px; padding: 8px 16px; font-size: 1em; border: none; border-radius: 4px; cursor: pointer; }
+    #coin { position: absolute; width: 80px; height: 80px; background-color: gold; border: 2px solid #b8860b; border-radius: 50%; opacity: 0; transition: opacity 0.3s; z-index: 10; }
+    /* Rahmen mit Lücken oben und unten */
+    #frame { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 5; }
+    .border-vertical { position: absolute; width: 4px; background: rgba(0,0,0,0.5); top: 0; bottom: 0; }
+    #border-left { left: 0; }
+    #border-right { right: 0; }
+    .border-horizontal { position: absolute; height: 4px; background: rgba(0,0,0,0.5); left: 0; right: 0; }
+    #border-top-left { top: 0; left: 0; right: calc(50% + 40px); }
+    #border-top-right { top: 0; left: calc(50% + 40px); right: 0; }
+    #border-bottom-left { bottom: 0; left: 0; right: calc(50% + 40px); }
+    #border-bottom-right { bottom: 0; left: calc(50% + 40px); right: 0; }
   </style>
 </head>
 <body>
-  <button id="start">Sensoren aktivieren</button>
+  <div id="controls">
+    <button id="start">Sensoren aktivieren</button>
+    <button id="toggle-frame" style="display:none;">Rahmen an/aus</button>
+    <button id="reset" style="display:none;">Zurücksetzen</button>
+  </div>
+  <div id="frame" style="display:none;">
+    <div id="border-left" class="border-vertical"></div>
+    <div id="border-right" class="border-vertical"></div>
+    <div id="border-top-left" class="border-horizontal"></div>
+    <div id="border-top-right" class="border-horizontal"></div>
+    <div id="border-bottom-left" class="border-horizontal"></div>
+    <div id="border-bottom-right" class="border-horizontal"></div>
+  </div>
   <div id="coin"></div>
+  <audio id="coinSound" src="https://actions.google.com/sounds/v1/coins/coin_drop.mp3" preload="auto"></audio>
 
   <script>
-    // Konfiguration
-    const sensitivity = 1.5; // Geschwindigkeit der Münze
-    let x, y;
-    let permissionRequested = false;
-
-    const btn = document.getElementById('start');
+    const btnStart = document.getElementById('start');
+    const btnToggle = document.getElementById('toggle-frame');
+    const btnReset = document.getElementById('reset');
+    const frame = document.getElementById('frame');
     const coin = document.getElementById('coin');
+    const coinSound = document.getElementById('coinSound');
 
-    btn.addEventListener('click', () => {
-      // Initialisiere Position und Sichtbarkeit
-      const initCoin = () => {
-        x = window.innerWidth / 2 - 40;
-        y = window.innerHeight / 2 - 40;
-        coin.style.left = `${x}px`;
-        coin.style.top  = `${y}px`;
-        coin.style.opacity = 1;
-      };
+    let x, y, hasFallen = false;
+    const sensitivity = 1.5;
+    let frameVisible = false;
 
-      // Starte Tracking der Bewegung
-      const startTracking = () => {
-        initCoin();
-        window.addEventListener('deviceorientation', event => {
-          const gamma = event.gamma || 0;
-          const beta  = event.beta  || 0;
+    function initCoin() {
+      x = window.innerWidth / 2 - 40;
+      y = window.innerHeight / 2 - 40;
+      coin.style.left = x + 'px';
+      coin.style.top  = y + 'px';
+      coin.style.opacity = 1;
+      hasFallen = false;
+    }
 
-          // Bewegung umrechnen
-          x += gamma * sensitivity;
-          y += beta * sensitivity - 45;
+    function startTracking() {
+      initCoin();
+      coinSound.pause();
+      window.addEventListener('deviceorientation', event => {
+        const gamma = event.gamma || 0;
+        const beta  = event.beta  || 0;
+        x += gamma * sensitivity;
+        y += beta * sensitivity - 45;
+        x = Math.max(0, Math.min(window.innerWidth - 80, x));
+        y = Math.max(0, Math.min(window.innerHeight - 80, y));
+        coin.style.left = x + 'px';
+        coin.style.top  = y + 'px';
+        if (!hasFallen && y > window.innerHeight - 80) {
+          hasFallen = true;
+          coin.style.opacity = 0;
+          coinSound.currentTime = 0;
+          coinSound.play();
+        }
+      }, true);
+    }
 
-          // Begrenzungen
-          x = Math.max(0, Math.min(window.innerWidth - 80, x));
-          y = Math.max(0, Math.min(window.innerHeight - 80, y));
-
-          coin.style.left = `${x}px`;
-          coin.style.top  = `${y}px`;
-
-          // Verschwinden lassen, wenn rausgefallen
-          if (y > window.innerHeight - 80) {
-            coin.style.opacity = 0;
-          }
-        }, true);
-      };
-
-      // Berechtigungsabfrage nur einmal
-      if (!permissionRequested &&
-          typeof DeviceOrientationEvent !== 'undefined' &&
-          typeof DeviceOrientationEvent.requestPermission === 'function') {
-        permissionRequested = true;
+    btnStart.addEventListener('click', () => {
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
           .then(permission => {
             if (permission === 'granted') {
-              btn.style.display = 'none';
+              btnStart.style.display = 'none';
+              btnToggle.style.display = 'inline-block';
+              btnReset.style.display = 'inline-block';
               startTracking();
-            } else {
-              alert('Sensor-Berechtigung verweigert.');
-            }
+            } else alert('Sensor-Berechtigung verweigert.');
           })
-          .catch(err => console.error('Error requesting permission:', err));
+          .catch(console.error);
       } else {
-        // Keine Abfrage nötig oder bereits angefragt
-        btn.style.display = 'none';
+        btnStart.style.display = 'none';
+        btnToggle.style.display = 'inline-block';
+        btnReset.style.display = 'inline-block';
         startTracking();
       }
     });
+
+    btnToggle.addEventListener('click', () => {
+      frameVisible = !frameVisible;
+      frame.style.display = frameVisible ? 'block' : 'none';
+    });
+    btnReset.addEventListener('click', () => initCoin());
   </script>
 </body>
 </html>
