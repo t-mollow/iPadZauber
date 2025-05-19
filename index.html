@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Münze rollen 1 (Debug-Version)</title>
+  <title>Münze rollen mit Sensor-Berechtigung</title>
   <style>
     body {
       margin: 0;
@@ -43,40 +43,54 @@
   <div id="coin"></div>
 
   <script>
+    // Konfiguration
+    const sensitivity = 1.5; // Geschwindigkeit der Münze
+    let x, y;
+    let permissionRequested = false;
+
     const btn = document.getElementById('start');
     const coin = document.getElementById('coin');
-    let x, y;
 
     btn.addEventListener('click', () => {
-      const startTracking = () => {
-        // Anfangsposition in die Bildschirmmitte
+      // Initialisiere Position und Sichtbarkeit
+      const initCoin = () => {
         x = window.innerWidth / 2 - 40;
         y = window.innerHeight / 2 - 40;
-        coin.style.left = x + 'px';
-        coin.style.top  = y + 'px';
+        coin.style.left = `${x}px`;
+        coin.style.top  = `${y}px`;
         coin.style.opacity = 1;
+      };
 
+      // Starte Tracking der Bewegung
+      const startTracking = () => {
+        initCoin();
         window.addEventListener('deviceorientation', event => {
           const gamma = event.gamma || 0;
           const beta  = event.beta  || 0;
 
-          x += gamma * 1.5;
-          y += beta  * 1.5 - 45;
+          // Bewegung umrechnen
+          x += gamma * sensitivity;
+          y += beta * sensitivity - 45;
 
+          // Begrenzungen
           x = Math.max(0, Math.min(window.innerWidth - 80, x));
           y = Math.max(0, Math.min(window.innerHeight - 80, y));
 
-          coin.style.left = x + 'px';
-          coin.style.top  = y + 'px';
+          coin.style.left = `${x}px`;
+          coin.style.top  = `${y}px`;
 
+          // Verschwinden lassen, wenn rausgefallen
           if (y > window.innerHeight - 80) {
             coin.style.opacity = 0;
           }
         }, true);
       };
 
-      if (typeof DeviceOrientationEvent !== 'undefined' &&
+      // Berechtigungsabfrage nur einmal
+      if (!permissionRequested &&
+          typeof DeviceOrientationEvent !== 'undefined' &&
           typeof DeviceOrientationEvent.requestPermission === 'function') {
+        permissionRequested = true;
         DeviceOrientationEvent.requestPermission()
           .then(permission => {
             if (permission === 'granted') {
@@ -86,8 +100,9 @@
               alert('Sensor-Berechtigung verweigert.');
             }
           })
-          .catch(err => console.error(err));
+          .catch(err => console.error('Error requesting permission:', err));
       } else {
+        // Keine Abfrage nötig oder bereits angefragt
         btn.style.display = 'none';
         startTracking();
       }
