@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Münze rollen mit Kalibrierung & Sound</title>
+  <title>Münze rollen mit absoluten Sensorwerten & Sound</title>
   <style>
     body { margin: 0; overflow: hidden; background: white; font-family: sans-serif; }
     #controls { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 20; }
-    #controls button, #controls input { margin: 0 5px; padding: 6px 12px; font-size: 0.9em; }
+    #controls button { margin: 0 5px; padding: 6px 12px; font-size: 0.9em; }
     #coin { position: absolute; width: 80px; height: 80px; background-color: gold; border: 2px solid #b8860b; border-radius: 50%; opacity: 0; transition: opacity 0.3s; z-index: 10; }
     #frame { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 5; }
     .border-vertical { position: absolute; width: 4px; background: rgba(0,0,0,0.5); top: 0; bottom: 0; }
@@ -25,7 +25,6 @@
     <button id="start">Sensoren aktivieren</button>
     <button id="toggle-frame" style="display:none;">Rahmen an/aus</button>
     <button id="reset" style="display:none;">Zurücksetzen</button>
-    <label style="display:none;">Sensitivität: <input id="sensitivity" type="range" min="0.5" max="5" step="0.1" value="1.5"></label>
   </div>
   <div id="frame" style="display:none;">
     <div id="border-left" class="border-vertical"></div>
@@ -42,44 +41,37 @@
     const btnStart = document.getElementById('start');
     const btnToggle = document.getElementById('toggle-frame');
     const btnReset = document.getElementById('reset');
-    const sensitivityInput = document.getElementById('sensitivity');
     const frame = document.getElementById('frame');
     const coin = document.getElementById('coin');
     const coinSound = document.getElementById('coinSound');
-    let baselineGamma = null, baselineBeta = null;
-    let centerX = 0, centerY = 0;
+    const coinSize = 80;
+    const maxGamma = 45;  // maximaler Winkel nach links/rechts
+    const maxBeta  = 45;  // maximaler Winkel nach vor/zurück
     let hasFallen = false;
 
     function initCoin() {
-      baselineGamma = null;
-      baselineBeta = null;
       hasFallen = false;
-      centerX = window.innerWidth / 2 - 40;
-      centerY = window.innerHeight / 2 - 40;
-      coin.style.left = centerX + 'px';
-      coin.style.top = centerY + 'px';
       coin.style.opacity = 1;
+      // zentriert initial position, wird überschrieben
+      coin.style.left = (window.innerWidth - coinSize)/2 + 'px';
+      coin.style.top  = (window.innerHeight - coinSize)/2 + 'px';
     }
 
     function startTracking() {
       initCoin();
       window.addEventListener('deviceorientation', event => {
-        const gamma = event.gamma || 0;
-        const beta  = event.beta  || 0;
-        if (baselineGamma === null) {
-          baselineGamma = gamma;
-          baselineBeta  = beta;
-        }
-        const sensitivity = parseFloat(sensitivityInput.value);
-        const deltaX = (gamma - baselineGamma) * sensitivity;
-        const deltaY = (beta  - baselineBeta ) * sensitivity;
-        let x = centerX + deltaX;
-        let y = centerY + deltaY;
-        x = Math.max(0, Math.min(window.innerWidth  - 80, x));
-        y = Math.max(0, Math.min(window.innerHeight - 80, y));
+        let gamma = event.gamma || 0;
+        let beta  = event.beta  || 0;
+        // Werte begrenzen
+        gamma = Math.max(-maxGamma, Math.min(maxGamma, gamma));
+        beta  = Math.max(-maxBeta,  Math.min(maxBeta,  beta ));
+        // Position berechnen
+        const x = ((gamma + maxGamma)/(2 * maxGamma)) * (window.innerWidth - coinSize);
+        const y = ((beta  + maxBeta )/(2 * maxBeta )) * (window.innerHeight - coinSize);
         coin.style.left = x + 'px';
         coin.style.top  = y + 'px';
-        if (!hasFallen && y >= window.innerHeight - 80) {
+        // Abfallen prüfen
+        if (!hasFallen && y >= window.innerHeight - coinSize) {
           hasFallen = true;
           coin.style.opacity = 0;
           coinSound.currentTime = 0;
@@ -96,7 +88,6 @@
               btnStart.style.display = 'none';
               btnToggle.style.display = 'inline-block';
               btnReset.style.display = 'inline-block';
-              sensitivityInput.parentElement.style.display = 'inline-block';
               startTracking();
             } else alert('Sensor-Berechtigung verweigert.');
           }).catch(console.error);
@@ -104,7 +95,6 @@
         btnStart.style.display = 'none';
         btnToggle.style.display = 'inline-block';
         btnReset.style.display = 'inline-block';
-        sensitivityInput.parentElement.style.display = 'inline-block';
         startTracking();
       }
     });
@@ -112,7 +102,9 @@
     btnToggle.addEventListener('click', () => {
       frame.style.display = frame.style.display === 'block' ? 'none' : 'block';
     });
+
     btnReset.addEventListener('click', initCoin);
   </script>
 </body>
 </html>
+
