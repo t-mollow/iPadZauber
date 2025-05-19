@@ -31,8 +31,7 @@
       width: 80px;
       height: 80px;
       background: url('https://upload.wikimedia.org/wikipedia/commons/1/1e/Euro_coin_1_obverse_common_2007.png') no-repeat center/contain;
-      top: calc(50% - 40px);
-      left: calc(50% - 40px);
+      opacity: 0;
       transition: opacity 0.5s;
     }
   </style>
@@ -44,47 +43,54 @@
   <script>
     const btn = document.getElementById('start');
     const coin = document.getElementById('coin');
-    let x = window.innerWidth/2 - 40;
-    let y = window.innerHeight/2 - 40;
+    let x, y;
 
     btn.addEventListener('click', () => {
+      const startTracking = () => {
+        // Anfangsposition zentriert setzen
+        x = window.innerWidth / 2 - 40;
+        y = window.innerHeight / 2 - 40;
+        coin.style.left = x + 'px';
+        coin.style.top  = y + 'px';
+        coin.style.opacity = 1;
+
+        window.addEventListener('deviceorientation', event => {
+          const gamma = event.gamma || 0;
+          const beta  = event.beta  || 0;
+
+          x += gamma * 1.5;
+          y += beta  * 1.5 - 45;
+
+          x = Math.max(0, Math.min(window.innerWidth - 80, x));
+          y = Math.max(0, Math.min(window.innerHeight - 80, y));
+
+          coin.style.left = x + 'px';
+          coin.style.top  = y + 'px';
+
+          // Verschwinden lassen, wenn rausgefallen
+          if (y > window.innerHeight - 80) {
+            coin.style.opacity = 0;
+          }
+        }, true);
+      };
+
       if (typeof DeviceOrientationEvent !== 'undefined' &&
           typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
           .then(permission => {
             if (permission === 'granted') {
-              initMotion();
               btn.style.display = 'none';
+              startTracking();
             } else {
               alert('Sensor-Berechtigung verweigert.');
             }
           })
           .catch(err => console.error(err));
       } else {
-        initMotion();
         btn.style.display = 'none';
+        startTracking();
       }
     });
-
-    function initMotion() {
-      window.addEventListener('deviceorientation', event => {
-        const gamma = event.gamma || 0; // links/rechts
-        const beta  = event.beta  || 0; // vor/zurück
-
-        x += gamma * 1.5;
-        y += beta  * 1.5 - 45;
-
-        x = Math.max(0, Math.min(window.innerWidth - 80, x));
-        y = Math.max(0, Math.min(window.innerHeight - 80, y));
-
-        coin.style.left = x + 'px';
-        coin.style.top  = y + 'px';
-
-        if (y > window.innerHeight - 85) {
-          coin.style.opacity = 0;
-        }
-      }, true);
-    }
   </script>
 </body>
 </html>
